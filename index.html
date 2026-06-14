@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gacha RNG Simulator V14.1 </title>
+    <style>
+        :root { 
+            --bg-color: #0d0e12; --card-bg: rgba(22, 26, 38, 0.9); 
+            --text-main: #f8fafc; --text-muted: #94a3b8; 
+            --equipped-color: #cbd5e1; --equipped-glow: rgba(255,255,255,0);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background-color: var(--bg-color); color: var(--text-main); text-align: center; 
+            margin: 0; padding: 12px; min-height: 100vh; display: flex; 
+            justify-content: center; align-items: center; position: relative; overflow-x: hidden; 
+        }
+        #redeem-btn { 
+            position: absolute; top: 12px; left: 12px; width: 44px; height: 44px; cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; 
+            background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 12px; font-size: 20px; z-index: 10; transition: 0.2s;
+        }
+        #redeem-btn:active { background: rgba(255,255,255,0.1); transform: scale(0.95); }
+        #admin-panel { 
+            display: none; background: #111827; border: 2px solid #ef4444; 
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.2); border-radius: 20px; 
+            padding: 16px; margin-bottom: 20px; text-align: left; 
+        }
+        .admin-control { margin-bottom: 12px; }
+        .admin-control select { 
+            width: 100%; padding: 12px; background: #0d0e12; 
+            border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 14px;
+        }
+        .container { 
+            max-width: 540px; width: 100%; background: var(--card-bg); backdrop-filter: blur(25px); 
+            -webkit-backdrop-filter: blur(25px); padding: 24px 18px; border-radius: 24px; 
+            border: 1px solid rgba(255,255,255,0.05); box-shadow: 0 20px 40px rgba(0,0,0,0.4); position: relative; 
+        }
+        h1 { 
+            font-size: 24px; font-weight: 800; margin: 10px 0 2px 0; 
+            background: linear-gradient(135deg, #00e5ff, #b546ff, #ff2a74); 
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; 
+        }
+        #equipped-aura-display {
+            font-size: 13px; font-weight: 800; margin-bottom: 12px;
+            color: var(--equipped-color); text-shadow: 0 0 10px var(--equipped-glow); transition: all 0.3s ease;
+        }
+        #code-status { 
+            font-size: 11px; color: #00e5ff; font-weight: 700; margin-bottom: 16px; 
+            text-transform: uppercase; letter-spacing: 0.5px; min-height: 16px; line-height: 1.4;
+        }
+        .stats-wrapper { margin-bottom: 18px; background: rgba(0, 0, 0, 0.25); padding: 12px 14px; border-radius: 16px; }
+        .stats { display: flex; justify-content: space-between; font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+        .progress-container { background: rgba(255, 255, 255, 0.03); border-radius: 100px; height: 6px; overflow: hidden; }
+        .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #ff2a74, #00e5ff); border-radius: 100px; transition: width 0.3s ease; }
+        .section-tabs { display: flex; gap: 8px; margin-bottom: 16px; background: rgba(0,0,0,0.2); padding: 4px; border-radius: 12px; }
+        .tab-btn { padding: 8px; font-size: 12px; font-weight: 700; background: transparent; color: var(--text-muted); border-radius: 8px; cursor: pointer; transition: 0.2s; border: none; flex: 1; }
+        .tab-btn.active { background: rgba(255,255,255,0.06); color: white; }
+        .actions { display: flex; gap: 10px; margin-bottom: 18px; }
+        .actions button { flex: 1; padding: 18px; font-size: 15px; font-weight: 700; border-radius: 16px; border: none; cursor: pointer; transition: 0.15s; }
+        .actions button:disabled { opacity: 0.2; cursor: not-allowed; transform: none !important; }
+        #btn-roll { background: #ffffff; color: #0d0e12; box-shadow: 0 4px 15px rgba(255,255,255,0.1); }
+        #btn-roll:active:not(:disabled) { transform: scale(0.97); background: #e2e8f0; }
+        #btn-auto { background: rgba(255, 255, 255, 0.04); color: var(--text-main); border: 1px solid rgba(255,255,255,0.05); }
+        #btn-auto.active { background: rgba(239, 68, 68, 0.12); color: #ef4444; border-color: rgba(239, 68, 68, 0.25); }
+        #btn-auto:active:not(:disabled) { transform: scale(0.97); }
+        #result-box { 
+            background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255,255,255,0.04); 
+            border-radius: 18px; padding: 20px; min-height: 90px; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; margin-bottom: 20px; 
+        }
+        .result-tier-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 2px; }
+        .result-item { font-size: 21px; font-weight: 800; margin: 4px 0; line-height: 1.2; }
+        .result-chance { font-size: 11px; color: var(--text-muted); }
+        .animate-pop { animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .animate-epic-drop { animation: epicPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards; }
+        @keyframes popIn { 0% { transform: scale(0.92); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        @keyframes epicPop { 0% { transform: scale(0.5); filter: brightness(2); opacity: 0; } 100% { transform: scale(1); filter: brightness(1); opacity: 1; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
+        .shake-effect { animation: shake 0.3s ease-in-out; }
+        #flash-overlay { position: fixed; top:0; left:0; width:100vw; height:100vh; background: white; opacity: 0; pointer-events: none; z-index: 99; transition: opacity 0.05s ease-out; }
+        #claim-btn-wrapper { margin-top: 10px; display: none; width: 100%; animation: popIn 0.25s ease forwards; }
+        #btn-claim { background: linear-gradient(135deg, #00e5ff, #b546ff); color: white; padding: 12px 24px; font-size: 13px; border-radius: 12px; font-weight: bold; width: 100%; box-shadow: 0 4px 15px rgba(0,229,255,0.25); border: none; cursor: pointer; }
+        .content-panel { display: none; } .content-panel.active { display: block; }
+        .inventory-title { font-size: 14px; text-align: left; margin-bottom: 12px; font-weight: 700; display: flex; justify-content: space-between; color: #cbd5e1; }
+                .item-list { text-align: left; max-height: 280px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 2px; }
+        .item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.03); border-radius: 12px; opacity: 0.15; transition: 0.2s; }
+        .item-info { display: flex; flex-direction: column; gap: 2px; } .item-name { font-weight: 600; font-size: 13px; } .item-chance-label { font-size: 11px; color: var(--text-muted); }
+        .right-meta { display: flex; align-items: center; gap: 8px; }
+        .item-count { font-weight: 700; font-size: 11px; background: rgba(255, 255, 255, 0.04); padding: 4px 8px; border-radius: 6px; color: var(--text-muted); }
+        .btn-equip { display: none; background: #3b82f6; color: white; border: none; padding: 5px 10px; font-size: 10px; font-weight: bold; border-radius: 6px; cursor: pointer; }
+        .btn-equip.active { background: #10b981; }
+        .leaderboard-list { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; text-align: left; }
+        .leaderboard-row { display: flex; justify-content: space-between; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); border-radius: 12px; font-size: 13px; align-items: center; }
+        .leaderboard-row.player-row { border-color: #00e5ff; background: rgba(0,229,255,0.03); font-weight: bold; }
+        .rank-badge { width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 11px; font-weight: bold; background: rgba(255,255,255,0.1); margin-right: 8px; text-align: center; }
+        .rank-1 .rank-badge { background: #facc15; color: #0d0e12; } .rank-2 .rank-badge { background: #cbd5e1; color: #0d0e12; } .rank-3 .rank-badge { background: #b45309; color: white; }
+        .tier-trash { --tier-color: #64748b; --glow: rgba(100,116,139,0.3); } .tier-common { --tier-color: #cbd5e1; --glow: rgba(203,213,225,0.3); } .tier-uncommon { --tier-color: #4caf50; --glow: rgba(76,175,80,0.3); }
+        .tier-rare { --tier-color: #2196f3; --glow: rgba(33,150,243,0.3); } .tier-epic { --tier-color: #a855f7; --glow: rgba(168,85,247,0.5); }
+        .tier-legendary { --tier-color: #f97316; --glow: rgba(249,115,22,0.5); } .tier-mythic { --tier-color: #ec4899; --glow: rgba(236,72,153,0.5); }
+        .tier-divine { --tier-color: #facc15; --glow: rgba(250,204,21,0.6); } .tier-godly { --tier-color: #06b6d4; --glow: rgba(6,182,212,0.6); }
+        .tier-immortal { --tier-color: #a7f3d0; --glow: rgba(167,243,208,0.6); } .tier-beyond { --tier-color: #ff2a74; --glow: rgba(255,42,116,0.8); }
+        .tier-owner { --tier-color: #ef4444; --glow: rgba(239,68,68,1); }
+        .color-target { color: var(--tier-color); } .glow-target { text-shadow: 0 0 12px var(--glow); }
+        .item-row.unlocked { background: rgba(255, 255, 255, 0.02); border-color: rgba(255, 255, 255, 0.06); opacity: 1; }
+        .item-row.unlocked .item-count { color: var(--text-main); background: rgba(255, 255, 255, 0.08); }
+        .item-row.unlocked .btn-equip { display: inline-block; }
+        .modal-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            background: rgba(10, 11, 14, 0.96); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            z-index: 100; justify-content: center; align-items: center; padding: 16px; opacity: 0; transition: opacity 0.4s ease; 
+        }
+        .custom-card { background: #1e293b; max-width: 420px; width: 100%; padding: 32px 20px; border-radius: 24px; text-align: center; transform: scale(0.8); transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .victory-border { border: 2px solid #facc15; box-shadow: 0 0 40px rgba(250, 204, 21, 0.2); }
+        .atmin-border { border: 2px solid #ef4444; box-shadow: 0 0 45px rgba(239, 68, 68, 0.4); background: #0f172a !important; }
+        .custom-card h2 { font-size: 24px; font-weight: 800; margin: 8px 0; }
+        .victory-text { background: linear-gradient(135deg, #facc15, #ff8100); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .atmin-text { background: linear-gradient(135deg, #ef4444, #ff7e7e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .msg-text { font-size: 14px; line-height: 1.5; color: #cbd5e1; margin-bottom: 20px; }
+        .base-btn { font-weight: 700; width: 100%; padding: 14px; border-radius: 12px; border:none; cursor:pointer;}
+        #btn-victory-close { background: #facc15; color: #0d0e12; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3); }
+        #btn-atmin-close { background: #ef4444; color: white; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); }
+    </style>
+</head>
+<body>
+<div id="flash-overlay"></div>
+<div id="redeem-btn" onclick="triggerRedeem()"></div>
+<div id="victory-modal" class="modal-overlay">
+    <div class="custom-card victory-border" id="victory-card">
+        <div style="font-size: 48px; margin-bottom: 4px;"></div>
+        <h2 class="victory-text">CONGRATULATIONS!</h2>
+        <p class="msg-text">Selamat Kamu Udah Dapet Semua ItemNya, Tunggu Update Selanjutnya Untuk Item Item Yg Menarik</p>
+        <button id="btn-victory-close" class="base-btn" onclick="closeVictoryModal()">OKEY SIAP! </button>
+    </div>
+</div>
+<div id="atmin-modal" class="modal-overlay">
+    <div class="custom-card atmin-border" id="atmin-card">
+        <div style="font-size: 55px; margin-bottom: 4px; filter: drop-shadow(0 0 10px #ef4444);"></div>
+        <h2 class="atmin-text">SYSTEM INTRUSION DETECTED</h2>
+        <p class="msg-text" style="color: #f1f5f9; font-weight: 500;">Selamat kamu dapet item Atmin, Sekarang masukin kode <span style="color:#ef4444; font-weight:900; background:rgba(0,0,0,0.4); padding:2px 6px; border-radius:6px;">Atmin123</span> untuk menjadi atmin</p>
+        <button id="btn-atmin-close" class="base-btn" onclick="closeAtminModal()">SIAP BOS ATMIN! </button>
+    </div>
+</div>
+<div class="container" id="main-container">
+    <div id="admin-panel">
+        <h3 style="margin:0 0 12px 0; color:#ef4444; font-size:16px; display:flex; justify-content:space-between;"> ATMIN DASHBOARD <span onclick="closeAdmin()" style="cursor:pointer; padding: 0 4px;">[X]</span></h3>
+        <div class="admin-control">
+            <label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">LUCK MULTIPLIER (ATMIN ONLY)</label>
+            <select id="admin-luck" onchange="checkAdminOverride()">
+                <option value="1">Normal (1x)</option><option value="10">Koki Beruntung (10x)</option><option value="100">Hoki Streamer (100x)</option><option value="1000">Gacha Dewa (1.000x)</option><option value="10000">Hacker Pusat (10.000x)</option>
+            </select>
+        </div>
+        <div class="admin-control"><label style="font-size:11px; color:var(--text-muted); display:block; margin-bottom:4px;">FORCE NEXT ROLL ITEM</label><select id="admin-force"><option value="none">-- Matikan Fitur Force --</option></select></div>
+    </div>
+    <h1>Gacha RNG Simulator </h1>
+    <div id="equipped-aura-display">Aura Terpakai: None (Beban Ringan) </div>
+    <div id="code-status"></div>
+    <div class="stats-wrapper">
+        <div class="stats">
+            <div>Rolls: <span id="total-rolls" style="color:white; font-weight:700;">0</span></div>
+            <div>Progress: <span id="collected-count">0</span>/<span id="total-items">0</span></div>
+        </div>
+        <div class="progress-container"><div class="progress-bar" id="progress-bar"></div></div>
+    </div>
+    <div class="actions"><button id="btn-roll" onclick="rollGacha()">Roll Single</button><button id="btn-auto" onclick="toggleAutoRoll()">Auto Roll</button></div>
+    <div id="result-box">
+        <div id="gacha-output" style="color:var(--text-muted); font-size:13px;">Tekan tombol di atas untuk memulai hoki gacha! </div>
+        <div id="claim-btn-wrapper"><button id="btn-claim" onclick="resumeFromRareDrop()">KLAIM & LANJUTKAN GACHA </button></div>
+    </div>
+    <div class="section-tabs"><button class="tab-btn active" id="tab-inv" onclick="switchTab('inventory')"> Koleksi Item</button><button class="tab-btn" id="tab-leader" onclick="switchTab('leaderboard')"> Global Rankings</button></div>
+    <div id="panel-inventory" class="content-panel active"><div class="inventory-title"><span>Daftar Aura Kamu</span><span id="completion-percent" style="color:#00e5ff;">0%</span></div><div class="item-list" id="inventory-list"></div></div>
+    <div id="panel-leaderboard" class="content-panel"><div class="inventory-title"><span>Top Gacha Master (Live)</span><span>Roll Count</span></div><div class="leaderboard-list" id="leaderboard-list"></div></div>
+    <button onclick="resetGameData()" style="background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); color:#ef4444; font-size:11px; padding:6px 12px; border-radius:8px; cursor:pointer; margin-top:15px; font-weight:bold; width:100%;">Reset Semua Progres Gacha </button>
+</div>
+<script>
+    const itemPool = [
+        { id: "owner_staff", name: " TONGKAT ATMIN", chance: 1000000000, tier: "tier-owner", tierName: "OWNER" },
+        { id: "b_author", name: " The Game Author's Soul", chance: 100000000, tier: "tier-beyond", tierName: "Beyond Godly" },
+        { id: "imm_timeline", name: " Broken Timeline Thread", chance: 25000000, tier: "tier-immortal", tierName: "Immortal" },
+        { id: "imm_stone", name: " Omega Signature Stone", chance: 10000000, tier: "tier-immortal", tierName: "Immortal" },
+        { id: "god_singularity", name: " Singularity Core", chance: 5000000, tier: "tier-godly", tierName: "Godly" },
+        { id: "god_galaxy", name: " Galaxy Symphony", chance: 1000000, tier: "tier-godly", tierName: "Godly" },
+        { id: "div_angel", name: " Seraphim Wing", chance: 500000, tier: "tier-divine", tierName: "Divine" },
+        { id: "div_void", name: " Absolute Void Eye", chance: 250000, tier: "tier-divine", tierName: "Divine" },
+        { id: "myth_eclipse", name: " Eternal Eclipse Crystal", chance: 100000, tier: "tier-mythic", tierName: "Mythic" },
+        { id: "myth_heart", name: " Ancient Dragon Heart", chance: 50000, tier: "tier-mythic", tierName: "Mythic" },
+        { id: "leg_sword", name: " Excalibur True Form", chance: 20000, tier: "tier-legendary", tierName: "Legendary" },
+        { id: "leg_crown", name: " Lost King's Crown", chance: 10000, tier: "tier-legendary", tierName: "Legendary" },
+        { id: "leg_phoenix", name: " Phoenix Feather", chance: 5000, tier: "tier-legendary", tierName: "Legendary" },
+        { id: "epic_relic", name: " Forbidden Relic", chance: 2500, tier: "tier-epic", tierName: "Epic" },
+        { id: "epic_ring", name: " Cursed Necro Ring", chance: 1000, tier: "tier-epic", tierName: "Epic" },
+        { id: "epic_book", name: " Spellbook of Shadows", chance: 500, tier: "tier-epic", tierName: "Epic" },
+        { id: "rare_shield", name: " Paladin Aegis", chance: 250, tier: "tier-rare", tierName: "Rare" },
+        { id: "rare_potion", name: " Elixir of Immortality", chance: 100, tier: "tier-rare", tierName: "Rare" },
+        { id: "unc_steel", name: " Refined Steel Ingot", chance: 50, tier: "tier-uncommon", tierName: "Uncommon" },
+        { id: "unc_wood", name: " Magic Birch Log", chance: 10, tier: "tier-uncommon", tierName: "Uncommon" },
+        { id: "com_stone", name: " Sharp Flint Stone", chance: 5, tier: "tier-common", tierName: "Common" },
+        { id: "com_rust", name: " Rusty Iron Nail", chance: 2, tier: "tier-common", tierName: "Common" },
+        { id: "tra_dirt", name: " Soggy Dirt Block", chance: 1, tier: "tier-trash", tierName: "Trash" },
+        { id: "tra_mold", name: " Moldy Bread Crumb", chance: 1, tier: "tier-trash", tierName: "Trash" }
+    ];
+        const redeemCodesDatabase = {
+        "HOKI123": { mult: 2, time: 15 * 60, name: "KODE HOKI123 (+2x LUCK)" },
+        "DEWAJUDI": { mult: 5, time: 5 * 60, name: "KODE DEWAJUDI (+5x LUCK)" },
+        "WIBUASLI": { mult: 3, time: 10 * 60, name: "BUFF ANIME POWER (+3x LUCK)" },
+        "SEDYOMULYO": { mult: 4, time: 8 * 60, name: "WONG PUSAT BLESSING (+4x LUCK)" },
+        "GACORCOR": { mult: 7, time: 3 * 60, name: "HOKI AKUN GACOR (+7x LUCK)" }
+    };
+    let fakeLeaderboard = [{ name: " AtminGanteng", rolls: 752344, isBot: true }, { name: " RNG_God99", rolls: 512040, isBot: true }, { name: " WibuHoki", rolls: 345011, isBot: true }];
+    let totalRolls = 0, inventory = {}, autoRollInterval = null, claimTimeout = null;
+    let redeemLuckMultiplier = 1, buffTimeRemaining = 0, countdownInterval = null, activeBuffName = "";
+    let isRareAnimActive = false, hasWonGame = false, wasAutoRollingSebelumnya = false, equippedAuraId = "none";
+    let usedCodes = JSON.parse(localStorage.getItem('gacha_used_codes')) || [];
+
+    document.getElementById('total-items').innerText = itemPool.length;
+    const listContainer = document.getElementById('inventory-list');
+    const adminForceSelect = document.getElementById('admin-force');
+
+    itemPool.forEach(item => {
+        const row = document.createElement('div'); row.id = `row-${item.id}`; row.className = `item-row ${item.tier}`;
+        row.innerHTML = `<div class="item-info"><span class="item-name color-target">${item.name}</span><span class="item-chance-label">1/${item.chance.toLocaleString('id-ID')}</span></div><div class="right-meta"><button class="btn-equip" id="equip-${item.id}" onclick="equipAura('${item.id}')">Equip</button><div class="item-count" id="count-${item.id}">x0</div></div>`;
+        listContainer.appendChild(row);
+        const option = document.createElement('option'); option.value = item.id; option.innerText = `[${item.tierName}] ${item.name}`;
+        adminForceSelect.appendChild(option);
+    });
+
+    function saveGameData() {
+        const gameSave = { totalRolls, inventory, hasWonGame, equippedAuraId, buff: { mult: redeemLuckMultiplier, time: buffTimeRemaining, name: activeBuffName } };
+        localStorage.setItem('gacha_rng_save_data', JSON.stringify(gameSave));
+    }
+    function loadGameData() {
+        const savedData = localStorage.getItem('gacha_rng_save_data');
+        if (savedData) {
+            const parsed = JSON.parse(savedData); totalRolls = parsed.totalRolls || 0; inventory = parsed.inventory || {}; hasWonGame = parsed.hasWonGame || false; equippedAuraId = parsed.equippedAuraId || "none";
+            document.getElementById('total-rolls').innerText = totalRolls.toLocaleString('id-ID');
+            Object.keys(inventory).forEach(itemId => {
+                if (inventory[itemId] > 0) {
+                    const row = document.getElementById(`row-${itemId}`); const countEl = document.getElementById('count-' + itemId);
+                    if (row && countEl) { row.classList.add('unlocked'); countEl.innerText = `x${inventory[itemId].toLocaleString('id-ID')}`; }
+                }
+            });
+            updateProgressUI(); if (equippedAuraId !== "none") equipAura(equippedAuraId, true);
+            if (parsed.buff && parsed.buff.time > 0) { redeemLuckMultiplier = parsed.buff.mult || 1; buffTimeRemaining = parsed.buff.time || 0; activeBuffName = parsed.buff.name || ""; startBuffCountdown(); }
+        }
+        renderLeaderboard();
+    }
+    function updateProgressUI() {
+        let unique = Object.keys(inventory).length; document.getElementById('collected-count').innerText = unique;
+        let percent = Math.round((unique / itemPool.length) * 100); document.getElementById('completion-percent').innerText = `${percent}%`; document.getElementById('progress-bar').style.width = `${percent}%`;
+    }
+    function switchTab(tabName) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+        if (tabName === 'inventory') { document.getElementById('tab-inv').classList.add('active'); document.getElementById('panel-inventory').classList.add('active'); }
+        else { document.getElementById('tab-leader').classList.add('active'); document.getElementById('panel-leaderboard').classList.add('active'); renderLeaderboard(); }
+    }
+    function equipAura(itemId, isSilent = false) {
+        const targetItem = itemPool.find(i => i.id === itemId); if (!targetItem || !inventory[itemId]) return;
+        equippedAuraId = itemId; document.querySelectorAll('.btn-equip').forEach(b => { b.innerText = "Equip"; b.classList.remove('active'); });
+        const activeBtn = document.getElementById(`equip-${itemId}`); if (activeBtn) { activeBtn.innerText = "EQUIPPED"; activeBtn.classList.add('active'); }
+        const displayBox = document.getElementById('equipped-aura-display'); const rowColor = getComputedStyle(document.getElementById(`row-${itemId}`)).getPropertyValue('--tier-color'); const rowGlow = getComputedStyle(document.getElementById(`row-${itemId}`)).getPropertyValue('--glow') || 'rgba(255,255,255,0.2)';
+        document.documentElement.style.setProperty('--equipped-color', rowColor); document.documentElement.style.setProperty('--equipped-glow', rowGlow); displayBox.innerText = `Aura Terpakai: ${targetItem.name} `;
+        if (!isSilent) saveGameData();
+    }
+    function renderLeaderboard() {
+        const board = document.getElementById('leaderboard-list'); board.innerHTML = "";
+        let currentBoardData = [...fakeLeaderboard, { name: " Kamu", rolls: totalRolls, isPlayer: true }]; currentBoardData.sort((a, b) => b.rolls - a.rolls);
+        currentBoardData.forEach((user, idx) => {
+            const rRow = document.createElement('div'); rRow.className = `leaderboard-row rank-${idx + 1} ${user.isPlayer ? 'player-row' : ''}`;
+            rRow.innerHTML = `<div><span class="rank-badge">${idx + 1}</span>${user.name}</div><div>${user.rolls.toLocaleString('id-ID')}</div>`; board.appendChild(rRow);
+        });
+    }
+    setInterval(() => { fakeLeaderboard.forEach(bot => { bot.rolls += Math.floor(Math.random() * 85) + 15; }); if (document.getElementById('panel-leaderboard').classList.contains('active')) { renderLeaderboard(); } }, 4000);
+    function triggerRedeem() {
+        if (isRareAnimActive) return; const codeInput = prompt("Masukkan Kode:"); if (!codeInput) return; const code = codeInput.trim();
+        if (code === "Atmin123") { document.getElementById('admin-panel').style.display = 'block'; return; }
+        if (redeemCodesDatabase[code]) {
+            if (usedCodes.includes(code)) return; const s = redeemCodesDatabase[code]; redeemLuckMultiplier = s.mult; buffTimeRemaining = s.time; activeBuffName = s.name; usedCodes.push(code); localStorage.setItem('gacha_used_codes', JSON.stringify(usedCodes)); saveGameData(); startBuffCountdown();
+        }
+    }
+    function startBuffCountdown() {
+        if (countdownInterval) clearInterval(countdownInterval);
+        countdownInterval = setInterval(() => {
+            buffTimeRemaining--; saveGameData();
+            if (buffTimeRemaining <= 0) { clearInterval(countdownInterval); redeemLuckMultiplier = 1; document.getElementById('code-status').innerText = ""; } 
+            else { let formatTime = `${Math.floor(buffTimeRemaining / 60).toString().padStart(2, '0')}:${(buffTimeRemaining % 60).toString().padStart(2, '0')}`; document.getElementById('code-status').innerText = ` ${activeBuffName} [ ${formatTime} ] `; }
+        }, 1000);
+    }
+    function checkAdminOverride() { let adminVal = document.getElementById('admin-luck').value; if (adminVal !== "1") { redeemLuckMultiplier = 1; buffTimeRemaining = 0; saveGameData(); document.getElementById('code-status').innerText = ` CHEAT PANEL ACTIVE (${adminVal}x) `; } }
+    function closeAdmin() { document.getElementById('admin-panel').style.display = 'none'; }
+    
+    function rollGacha() {
+        if (isRareAnimActive) return; totalRolls++; document.getElementById('total-rolls').innerText = totalRolls.toLocaleString('id-ID'); let rolledItem = null;
+        const adminLuck = parseInt(document.getElementById('admin-luck').value) || 1; const finalLuckMultiplier = Math.max(adminLuck, redeemLuckMultiplier); const forcedItemId = document.getElementById('admin-force').value;
+        if (forcedItemId !== "none") { rolledItem = itemPool.find(item => item.id === forcedItemId); } 
+        else { for (let item of itemPool) { let adj = Math.max(1, Math.floor(item.chance / finalLuckMultiplier)); if ((Math.floor(Math.random() * adj) + 1) === 1) { rolledItem = item; break; } } }
+        if (!rolledItem) rolledItem = itemPool[itemPool.length - 1];
+        inventory[rolledItem.id] = (inventory[rolledItem.id] || 0) + 1; saveGameData();
+        const outBox = document.getElementById('gacha-output'); const highTiers = ['tier-epic', 'tier-legendary', 'tier-mythic', 'tier-divine', 'tier-godly', 'tier-immortal', 'tier-beyond', 'tier-owner'];
+        
+        if (highTiers.includes(rolledItem.tier)) {
+            isRareAnimActive = true; wasAutoRollingSebelumnya = (autoRollInterval !== null); if (autoRollInterval) { clearInterval(autoRollInterval); autoRollInterval = null; }
+            document.getElementById('btn-roll').disabled = true; document.getElementById('btn-auto').disabled = true;
+            const flash = document.getElementById('flash-overlay'); const rowColor = getComputedStyle(document.getElementById(`row-${rolledItem.id}`)).getPropertyValue('--tier-color'); flash.style.background = rowColor || 'white'; flash.style.opacity = '0.7'; setTimeout(() => { flash.style.opacity = '0'; }, 100);
+            document.getElementById('main-container').classList.add('shake-effect'); setTimeout(() => { document.getElementById('main-container').classList.remove('shake-effect'); }, 300);
+            outBox.innerHTML = `<div class="animate-epic-drop ${rolledItem.tier}"><div class="result-tier-label color-target glow-target"> ITEM LANGKA </div><div class="result-item color-target glow-target">${rolledItem.name}</div><div class="result-chance" style="color:white; font-weight:bold;">1/${rolledItem.chance.toLocaleString('id-ID')}</div></div>`;
+            document.getElementById('claim-btn-wrapper').style.display = 'block';
+            if (rolledItem.id === "owner_staff") { setTimeout(triggerAtminModal, 600); }
+            
+            // TIMEOUT BARU: AUTO-CLAIM DALAM 3 DETIK JIKA TIDAK DI-KLIK
+            let sisaWaktu = 3;
+            const btnClaim = document.getElementById('btn-claim');
+            btnClaim.innerText = `KLAIM & LANJUTKAN GACHA (${sisaWaktu}s) `;
+            
+            if (claimTimeout) clearInterval(claimTimeout);
+            claimTimeout = setInterval(() => {
+                sisaWaktu--;
+                if (sisaWaktu <= 0) {
+                    clearInterval(claimTimeout);
+                    resumeFromRareDrop(); // Klaim otomatis dijalankan
+                } else {
+                    btnClaim.innerText = `KLAIM & LANJUTKAN GACHA (${sisaWaktu}s) `;
+                }
+            }, 1000);
+        } else { outBox.innerHTML = `<div class="animate-pop ${rolledItem.tier}"><div class="result-tier-label color-target">${rolledItem.tierName}</div><div class="result-item color-target">${rolledItem.name}</div><div class="result-chance">1/${rolledItem.chance.toLocaleString('id-ID')}</div></div>`; }
+        const targetRow = document.getElementById(`row-${rolledItem.id}`); targetRow.classList.add('unlocked'); document.getElementById(`count-${rolledItem.id}`).innerText = `x${inventory[rolledItem.id].toLocaleString('id-ID')}`; updateProgressUI();
+        let unique = Object.keys(inventory).length; let percent = Math.round((unique / itemPool.length) * 100);
+        if (percent === 100 && !hasWonGame) { hasWonGame = true; saveGameData(); if (autoRollInterval) { clearInterval(autoRollInterval); autoRollInterval = null; } document.getElementById('btn-auto').innerText = "Auto Roll"; document.getElementById('btn-auto').classList.remove('active'); setTimeout(triggerVictory, 500); }
+    }
+    
+    function resumeFromRareDrop() {
+        if (claimTimeout) { clearInterval(claimTimeout); claimTimeout = null; }
+        isRareAnimActive = false; document.getElementById('claim-btn-wrapper').style.display = 'none'; document.getElementById('btn-roll').disabled = false; document.getElementById('btn-auto').disabled = false; document.getElementById('gacha-output').innerHTML = `<div style="color:var(--text-muted); font-size:13px;">Lanjut gacha... </div>`;
+        if (wasAutoRollingSebelumnya) { const btn = document.getElementById('btn-auto'); btn.innerText = "Auto Roll: ON"; btn.classList.add('active'); autoRollInterval = setInterval(rollGacha, 35); }
+    }
+    function triggerAtminModal() { const modal = document.getElementById('atmin-modal'); const card = document.getElementById('atmin-card'); modal.style.display = 'flex'; setTimeout(() => { modal.style.opacity = '1'; card.style.transform = 'scale(1)'; }, 50); }
+    function closeAtminModal() { const modal = document.getElementById('atmin-modal'); const card = document.getElementById('atmin-card'); card.style.transform = 'scale(0.8)'; modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; }, 400); }
+    function triggerVictory() { const modal = document.getElementById('victory-modal'); const card = document.getElementById('victory-card'); modal.style.display = 'flex'; setTimeout(() => { modal.style.opacity = '1'; card.style.transform = 'scale(1)'; }, 50); }
+    function closeVictoryModal() { const modal = document.getElementById('victory-modal'); const card = document.getElementById('victory-card'); card.style.transform = 'scale(0.8)'; modal.style.opacity = '0'; setTimeout(() => { modal.style.display = 'none'; }, 400); }
+    function toggleAutoRoll() { if (isRareAnimActive) return; const btn = document.getElementById('btn-auto'); if (autoRollInterval) { clearInterval(autoRollInterval); autoRollInterval = null; btn.innerText = "Auto Roll"; btn.classList.remove('active'); } else { btn.innerText = "Auto Roll: ON"; btn.append; btn.classList.add('active'); autoRollInterval = setInterval(rollGacha, 35); } }
+    function resetGameData() { if (confirm("Reset data?")) { localStorage.clear(); location.reload(); } }
+    window.onload = function() { loadGameData(); };
+</script>
+</body>
+</html>
