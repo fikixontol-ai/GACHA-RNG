@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Gacha RNG Simulator V15.2 🗿</title>
+    <title>Gacha RNG Simulator V15.5 🗿</title>
     <style>
         :root { 
             --bg-color: #0d0e12; --card-bg: rgba(22, 26, 38, 0.9); 
@@ -14,7 +14,7 @@
         ::-webkit-scrollbar { width: 4px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; 
             background-color: var(--bg-color); color: var(--text-main); text-align: center; 
             margin: 0; padding: 12px; min-height: 100vh; display: flex; 
             justify-content: center; align-items: center; position: relative; overflow-x: hidden; 
@@ -69,7 +69,6 @@
         .actions button { flex: 1; padding: 18px; font-size: 15px; font-weight: 700; border-radius: 16px; border: none; cursor: pointer; transition: 0.15s; }
         .actions button:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
         
-        /* TWEAK TOMBOL ROLL SINGLE (DENGAN ANIMASI TRANSISI WARNA PAS LOCK) */
         #btn-roll { background: #ffffff; color: #0d0e12; box-shadow: 0 4px 15px rgba(255,255,255,0.1); transition: all 0.2s ease; }
         #btn-roll:active:not(:disabled) { transform: scale(0.97); background: #e2e8f0; }
         #btn-roll.cooldown-active { background: rgba(255, 255, 255, 0.1) !important; color: rgba(255, 255, 255, 0.4) !important; }
@@ -237,10 +236,12 @@
     let totalRolls = 0, inventory = {}, autoRollInterval = null, claimTimeout = null, singleRollTimeout = null;
     let redeemLuckMultiplier = 1, buffTimeRemaining = 0, countdownInterval = null, activeBuffName = "";
     let isRareAnimActive = false, hasWonGame = false, wasAutoRollingSebelumnya = false, equippedAuraId = "none", equippedTitleId = "pemula";
+    
+    // MEMBACA DATA KODE YANG SUDAH PERNAH DI-REDEEM OLEH USER
     let usedCodes = JSON.parse(localStorage.getItem('gacha_used_codes')) || [];
 
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playSFX(type) {
+    function playSFX(type) {
         try {
             const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
             osc.connect(gain); gain.connect(audioCtx.destination);
@@ -261,7 +262,7 @@
             }
         } catch(e) {}
     }
-    function spawnParticles(color) {
+                function spawnParticles(color) {
         for (let i = 0; i < 40; i++) {
             const p = document.createElement('div'); p.className = 'particle'; p.style.background = color || '#ff2a74';
             const size = Math.random() * 6 + 4; p.style.width = size + 'px'; p.style.height = size + 'px';
@@ -303,7 +304,7 @@
             Object.keys(inventory).forEach(itemId => {
                 if (inventory[itemId] > 0) {
                     const row = document.getElementById(`row-${itemId}`); const countEl = document.getElementById('count-' + itemId);
-                    if (row && countEl) { row.classList.add('unlocked'); countEl.innerText = `x${inventory[itemId].toLocaleString('id-ID')}`; }
+                    if (row && countEl) { row.classList.add('unlocked'); countEl.innerText = `x${inventory[inventoryId].toLocaleString('id-ID')}`; }
                 }
             });
             updateProgressUI(); if (equippedAuraId !== "none") equipAura(equippedAuraId, true);
@@ -349,10 +350,46 @@
         currentBoardData.forEach((user, idx) => { const rRow = document.createElement('div'); rRow.className = `leaderboard-row rank-${idx + 1} ${user.isPlayer ? 'player-row' : ''}`; rRow.innerHTML = `<div><span class="rank-badge">${idx + 1}</span>${user.name}</div><div>${user.rolls.toLocaleString('id-ID')}</div>`; board.appendChild(rRow); });
     }
     setInterval(() => { fakeLeaderboard.forEach(bot => { bot.rolls += Math.floor(Math.random() * 85) + 15; }); if (document.getElementById('panel-leaderboard').classList.contains('active')) { renderLeaderboard(); } }, 4000);
+    
+    // UPDATE UTAMA: Logika Anti-Timpa dan Sekali Pakai untuk Redeem Code
     function triggerRedeem() {
-        if (isRareAnimActive) return; const codeInput = prompt("Masukkan Kode:"); if (!codeInput) return; const code = codeInput.trim();
-        if (code === "Atmin123") { document.getElementById('admin-panel').style.display = 'block'; return; }
-        if (redeemCodesDatabase[code]) { if (usedCodes.includes(code)) return; const s = redeemCodesDatabase[code]; redeemLuckMultiplier = s.mult; buffTimeRemaining = s.time; activeBuffName = s.name; usedCodes.push(code); localStorage.setItem('gacha_used_codes', JSON.stringify(usedCodes)); saveGameData(); startBuffCountdown(); }
+        if (isRareAnimActive) return; 
+        const codeInput = prompt("Masukkan Kode:"); 
+        if (!codeInput) return; 
+        const code = codeInput.trim().toUpperCase(); // Supaya huruf kecil/besar sama saja
+        
+        if (code === "ATMIN123") { document.getElementById('admin-panel').style.display = 'block'; return; }
+        
+        // Aturan 1: Cek apakah kode ada di database
+        if (redeemCodesDatabase[code]) {
+            // Aturan 2: Proteksi Anti-Timpa (Cek apakah ada buff yang masih aktif)
+            if (buffTimeRemaining > 0) {
+                alert(`⚠️ GAGAL! Kamu masih punya buff aktif [${activeBuffName}].\nTunggu durasinya sampai habis baru bisa pakai kode lain! 🗿`);
+                return;
+            }
+            
+            // Aturan 3: Proteksi Sekali Pakai (Cek history penukaran)
+            if (usedCodes.includes(code)) {
+                alert("❌ KODE SUDAH PERNAH DIPAKAI!\nSetiap pemain hanya bisa mengklaim kode ini sekali saja! 🗿");
+                return;
+            }
+            
+            // Lolos semua sensor, aktifkan buff!
+            const s = redeemCodesDatabase[code]; 
+            redeemLuckMultiplier = s.mult; 
+            buffTimeRemaining = s.time; 
+            activeBuffName = s.name; 
+            
+            // Kunci kode ini agar tidak bisa dipakai lagi selamanya
+            usedCodes.push(code); 
+            localStorage.setItem('gacha_used_codes', JSON.stringify(usedCodes)); 
+            
+            saveGameData(); 
+            startBuffCountdown();
+            alert(`🎉 BERHASIL! ${s.name} telah aktif! Hoki kamu meningkat! 🚀`);
+        } else {
+            alert("⚠️ Kode salah atau tidak terdaftar!");
+        }
     }
     function startBuffCountdown() {
         if (countdownInterval) clearInterval(countdownInterval);
@@ -365,24 +402,15 @@
     function checkAdminOverride() { let adminVal = document.getElementById('admin-luck').value; if (adminVal !== "1") { redeemLuckMultiplier = 1; buffTimeRemaining = 0; saveGameData(); document.getElementById('code-status').innerText = `⚡ CHEAT PANEL ACTIVE (${adminVal}x) ⚡`; } }
     function closeAdmin() { document.getElementById('admin-panel').style.display = 'none'; }
     
-    // UPDATE UTAMA: Logika tombol Roll Single terkunci 2 detik (2000ms) dengan visual loading
     function rollGacha() {
         if (isRareAnimActive) return;
         const rollBtn = document.getElementById('btn-roll');
         const isAutoActive = (autoRollInterval !== null);
         
-        // Proteksi Jeda Anti-Spam (hanya aktif jika tidak sedang Auto Roll)
         if (!isAutoActive) {
-            rollBtn.disabled = true;
-            rollBtn.classList.add('cooldown-active');
-            rollBtn.innerText = "⌛ Rolling...";
-            singleRollTimeout = setTimeout(() => {
-                rollBtn.disabled = false;
-                rollBtn.classList.remove('cooldown-active');
-                rollBtn.innerText = "Roll Single";
-            }, 2000); // 2 Detik Jeda Animasi
+            rollBtn.disabled = true; rollBtn.classList.add('cooldown-active'); rollBtn.innerText = "⌛ Rolling...";
+            singleRollTimeout = setTimeout(() => { rollBtn.disabled = false; rollBtn.classList.remove('cooldown-active'); rollBtn.innerText = "Roll Single"; }, 2000);
         }
-
         totalRolls++; document.getElementById('total-rolls').innerText = totalRolls.toLocaleString('id-ID'); let rolledItem = null;
         checkAutoRollLockState();
         const currentTitle = titleDatabase.find(t => t.id === equippedTitleId) || titleDatabase[0];
@@ -437,3 +465,4 @@
 </script>
 </body>
 </html>
+
